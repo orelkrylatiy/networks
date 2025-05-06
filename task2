@@ -1,0 +1,29 @@
+import socket
+import time
+import struct
+from datetime import datetime, timedelta
+
+# Читаем конфиг
+with open("sntp_config.txt", "r") as f:
+    time_shift = int(f.readline().split("=")[1].strip())
+
+# SNTP-сервер
+server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+server.bind(("0.0.0.0", 123))
+
+print("SNTP server (lying) started...")
+
+while True:
+    data, addr = server.recvfrom(1024)
+    print(f"Request from {addr}")
+
+    # Получаем текущее время 
+    now = datetime.utcnow() + timedelta(seconds=time_shift)
+    ntp_time = int(now.timestamp()) + 2208988800  # NTP-эпоха (1900)
+
+    # Формируем ответ (Mode=4, Version=4)
+    response = bytearray(48)
+    response[0] = 0b00100100  # Leap=0, Version=4, Mode=4
+    struct.pack_into("!12I", response, 0, *[0] * 10, ntp_time)
+
+    server.sendto(response, addr)
